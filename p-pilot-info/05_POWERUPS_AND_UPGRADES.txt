@@ -1,0 +1,11 @@
+GLASS POWER-UPS AND UPGRADES
+- Reuse existing in-world glass-smash power-up system from Air Brawl.
+- Player can identify the upgrade before colliding with its glass container and decide if worth the damage.
+- In Persistent Pilot, breaking through glass costs 5 HP rather than the regular mode's 10 HP.
+- Upgrades persist for the entire pilot's run and disappear on pilot death.
+- Upgrade generation pool excludes non-stackable upgrades already owned.
+- Stackable upgrades may reappear and be collected repeatedly; each upgrade defines whether it stacks.
+- Speed/throttle increase was an example of a POSSIBLY stackable upgrade; not yet decided.
+- Period-flavored, cartoony, mechanical upgrade ideas DISCUSSED, NOT CONFIRMED: rear oil dump that blinds pursuers, reinforced wings, extra fuel tank, smoke canister, improved propeller, fire extinguisher, rear-facing gun.
+- Weight can affect flight handling and crash safety; specific numerical effects TBD.
+- Existing on-screen 'upgrade acquired' notification is being implemented separately by user; do NOT include as a new implementation task.

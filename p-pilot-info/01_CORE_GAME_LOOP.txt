@@ -1,0 +1,10 @@
+PERSISTENT PILOT — CORE GAME LOOP
+- Separate roguelike campaign mode alongside ordinary respawn-based multiplayer.
+- Player starts a run with one airplane at 100% HP; preserve the same pilot and plane as long as possible.
+- Long, mostly forward-moving, continuous journey from Utah to Washington, D.C., with full airplane control.
+- Encounter hostile German/Nazi aircraft, occasionally aided by Allied fighters.
+- Survive combat, optionally visit hangars, gather glass-encased upgrades, repair and refuel.
+- Pilot death ends the run; upgrades reset. No arbitrary limit on survivable crash-landings.
+- Successful delivery of intelligence in Washington ends the campaign.
+- Style: simple low-poly geometric environment, cartoony gameplay, period-flavored improvised equipment; no futuristic bubble shields.
+- Existing Air Brawl flight/control systems should be reused where possible.

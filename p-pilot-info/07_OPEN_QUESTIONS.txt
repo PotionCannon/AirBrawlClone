@@ -1,0 +1,14 @@
+OPEN QUESTIONS / IMPLEMENTATION GUARDRAILS
+1. Exact aircraft HP, airworthiness, pilot HP, fuel, and damage component data model.
+2. Whether repair minigame targets chosen components or automatically allocates repair progress.
+3. Exact skill-check timings, gains, misses, and whether failures have penalties.
+4. Component damage states, visible indications, smoking-to-fire countdown, and ground shutdown behavior.
+5. Exact minimum takeoff airworthiness (~30% proposed) and green threshold.
+6. Hangar availability on critical faults above 70% HP / 50% fuel.
+7. Forced departure when fuel is 100% but engine is critically unsafe.
+8. Specific world route, map geometry, enemy spawning and encounter schedule; user will supply schematic.
+9. Upgrade catalog, stacking flags, effects, weights, and how glass objects are populated.
+10. Pilot identity, exact intelligence, story copy, and museum visuals.
+11. Failed-run stats and restart UI.
+12. Whether aircraft can change from wood to metal during a run.
+IMPORTANT: Don't implement unconfirmed proposals as locked decisions. Ask the user before filling consequential gaps.

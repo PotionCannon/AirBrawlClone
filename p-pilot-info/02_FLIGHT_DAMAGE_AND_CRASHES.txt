@@ -1,0 +1,10 @@
+FLIGHT, DAMAGE, AND EMERGENCY LANDINGS
+- Campaign plane has more HP than PvP planes, but remains vulnerable.
+- Weight affects handling and crash survivability: a light, minimally equipped wooden plane generally glides and emergency-lands more easily than a heavily loaded plane. Metal planes also follow weight principles. Avoid hard 'too heavy to fly' limits.
+- At 0 HP, do not immediately kill/respawn: enter a disabled, spinning descent. Player attempts to stabilize and land.
+- Hard impact can kill pilot and end run; survivable landing transitions to first-person exterior repair mode with a wrench shown, no character sprite required.
+- Hostile planes continue swooping and shooting at the exposed pilot. Their attacks damage pilot, NOT the grounded plane, to give a measure of relief.
+- Pilot can repair sufficiently to resume flight; full HP restoration is not required.
+- Component problems matter independently of overall airworthiness: smoking engine worsens in flight, catches fire, then combusts and kills pilot if not repaired or safely shut down in time. A bent/broken wing remains deformed until enough successful repairs restore it, then snaps back to normal geometry.
+- A risky short flight to a hangar may succeed before engine combustion; landing and shutting down prevents in-flight explosion, but does NOT magically fix damage.
+- Timing, severity, crash physics, and pilot HP values are not yet specified.

@@ -1,0 +1,24 @@
+REPAIRS, AIRWORTHINESS, HANGARS
+UNIVERSAL REPAIR:
+- Use one repair interaction for crash sites and hangars: first-person outside airplane, visible wrench, click/tap airplane and complete timed circular skill checks (inspired by Dead by Daylight generator checks).
+- A moving marker must be hit within a target region whose size changes; successful checks restore some airworthiness/repair progress.
+- No hammer animation or complex part placement. Damage repairs may visually resolve as wing straightening, smoke stopping, and simple low-poly patch details.
+- Airworthiness threshold: below ~30% red/not flyable; at ~30% yellow/flyable; green indicates healthier condition. Exact green threshold TBD.
+- Airworthiness alone does not guarantee safety: inspect smoking engine, bent wing and other critical faults.
+- PROPOSED: choose specific components to prioritize. This was suggested but not confirmed.
+CRASH SITE:
+- Enemies can strafe pilot while repair minigame is active; grounded airplane does not receive further enemy-fire damage.
+- Once airworthy, pilot can choose to take off even with unresolved problems.
+HANGARS:
+- Optional refuge locations scattered along route: grass fields with small hangars, small-town airports, etc.; not mandatory checkpoints.
+- At plane HP <=70%, display urgent 'Find a Hangar' message and 'Locate a Hangar' button beneath minimap.
+- At fuel <=50%, hangar locator also becomes available.
+- Hangar landing unavailable above those thresholds (unless an exception is later agreed).
+- PROPOSED, not confirmed: critical mechanical fault may also unlock locator.
+- Locator shows nearest hangar (consider reachable hangar rather than simply geometric nearest).
+- Safe from hostile fire while repairing at hangar.
+- If plane not airworthy, refueling does NOT begin. Once airworthy, refueling slowly starts.
+- While fuel fills toward 100%, player may complete timed repairs. When fuel reaches 100%, 'Time to go' appears, repair ends, and airplane automatically departs even if not fully repaired.
+- Arriving with less fuel gives more repair time. This is intentional and accepted as balanced.
+- After hangar takeoff, player must remain airborne for 30 seconds before locating/landing at another hangar.
+- Clarify later whether 'forced takeoff' can occur with critical unsafe faults, and how exceptions/engine shutoff work.

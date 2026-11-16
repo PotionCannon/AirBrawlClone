@@ -1,0 +1,11 @@
+SETTING, STORY, ENDING, AND STATISTICS
+- Alternate-history WWII-style United States partially or heavily overrun by Nazi/German forces.
+- Player is transporting critical intelligence from Utah to Washington, D.C. (the District of Columbia, not part of Virginia or Maryland).
+- PROPOSED story details: resistance courier, sealed documents, plans for a major German offensive, intelligence delivered to Allied command. Exact pilot background and intelligence contents not finalized.
+- Arrival near Washington triggers a cinematic: Allied planes take formation on both sides and escort player; player flight control temporarily hands off to scripted landing.
+- Epilogue appears as typed-out historical/military-report-style text describing how the delivered information enabled US forces to push back Nazi forces, the pilot's honors, and the airplane being preserved in a museum.
+- The battered, patched airplane from the run could be shown in the museum; visual persistence is a proposed enhancement.
+- After epilogue text types out, its text box slides left and a RIGHT-HAND statistics panel appears ALREADY FILLED (no typing animation for stats).
+- PROPOSED statistics: distance traveled, enemies downed, friendly planes downed, crash landings survived, repairs completed, hangars visited, upgrades collected, total flight time, final plane condition.
+- Whether failed runs show a similar statistics report remains unanswered.
+- Tone: satisfying and triumphant, without requiring a long story-heavy campaign.

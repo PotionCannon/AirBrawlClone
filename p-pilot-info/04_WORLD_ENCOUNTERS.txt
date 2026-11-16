@@ -1,0 +1,10 @@
+WORLD, LEVEL STRUCTURE, AND ENCOUNTERS
+- Campaign is a long forward-oriented route, Contra-like in progression, rather than isolated dogfight rounds.
+- Player retains full flight control, but level/world design encourages continued eastward progress.
+- User will provide a terrain/map schematic separately; implementing assistant should use simple geometric shapes based on it.
+- Example scenery transitions: canyon, desert, river-following, increasingly green terrain; route across the US from Utah toward Washington, D.C.
+- Nazi/German planes attack the courier. Allied fighters sometimes intervene, mostly randomly, with some predetermined encounters.
+- Allies and enemies fight each other; friendly fire is enabled, including player damaging/destroying Allied aircraft.
+- No extra automatic score/reputation penalty for friendly fire currently desired; losing a helpful ally is the consequence.
+- PROPOSED AI behavior: allies may prioritize attackers threatening the player, including while player is repairing after a crash.
+- Avoid claiming precise historical geography or scripted encounters until the user's schematic arrives.
