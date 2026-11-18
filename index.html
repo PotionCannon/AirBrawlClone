@@ -1,14 +1,30 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Air Brawl Clone</title><style>
 html,body{margin:0;overflow:hidden;background:#77cfff;font-family:system-ui;color:white;touch-action:none}
-#hud{position:fixed;top:12px;left:14px;text-shadow:1px 2px 3px #123;pointer-events:none}
+#aim-hud{position:fixed;left:50%;top:50%;width:180px;height:180px;transform:translate(-50%,-50%);pointer-events:none;z-index:4;filter:drop-shadow(0 1px 2px #1239)}
+#aim-hud svg{width:100%;height:100%;overflow:visible}
+#attitude-ring{stroke:#ffe3a2;stroke-width:1.5;fill:#142c3b19;opacity:.9}
+#horizon-line{stroke:#ffdb72;stroke-width:2.5;stroke-linecap:round}
+#horizon-minor{stroke:#ffdb72;stroke-width:1.4;opacity:.7}
+#reticle{stroke:white;stroke-width:2;fill:none}
+#hud{position:fixed;top:255px;left:14px;text-shadow:1px 2px 3px #123;pointer-events:none}
+#minimap-wrap{position:fixed;top:10px;left:12px;width:168px;height:168px;border:2px solid #d9f1ffb8;border-radius:12px;overflow:hidden;background:#6da448d9;box-shadow:0 2px 10px #102a3b99;pointer-events:none;z-index:5}
+#minimap{display:block;width:168px;height:168px}
+/* Scrolling altitude tape: feet above the terrain datum, scaled from the 3-unit propeller. */
+#altimeter{position:fixed;right:10px;top:10px;transform:scale(0.666667);transform-origin:top right;width:104px;height:min(53vh,340px);z-index:6;pointer-events:none;filter:drop-shadow(0 1px 2px #102b3b44)}
+#altimeter canvas{width:100%;height:100%;display:block}
 #help{position:fixed;bottom:12px;left:12px;background:#1238;padding:9px;border-radius:8px;font-size:12px}
 #mobile{position:fixed;inset:0;pointer-events:none}
 button{pointer-events:auto;border:1px solid #fff8;background:#2349;color:white;border-radius:12px;font-size:20px;touch-action:none}
-#pad{position:absolute;bottom:20px;right:20px;display:grid;grid-template-columns:repeat(3,55px);gap:5px}
-#pad button{height:55px}
-#fire{position:absolute;bottom:95px;left:20px;width:85px;height:85px;border-radius:50%;background:#d43655bb}
-#throttle{position:absolute;bottom:20px;left:115px;display:flex;gap:6px}
-#throttle button{width:52px;height:52px}
+#joystick{position:absolute;bottom:20px;left:20px;width:124px;height:124px;border-radius:50%;background:#183d5788;border:2px solid #ffffff77;box-sizing:border-box;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center}
+#joystick::before{content:"";position:absolute;inset:17px;border:1px solid #ffffff3d;border-radius:50%;pointer-events:none}
+#joystick-knob{position:relative;overflow:hidden;width:53px;height:53px;border-radius:50%;background:#b6d6e5dd;border:2px solid #fff;box-sizing:border-box;box-shadow:0 2px 9px #122b4080;pointer-events:none;transform:translate(0,0)}
+#joystick-knob::after{content:"";position:absolute;inset:0;background:#ffda35;clip-path:inset(var(--throttle-empty,0%) 0 0 0);border-radius:50%;pointer-events:none}
+#roll{position:absolute;bottom:20px;right:20px;width:136px;height:64px;border:2px solid #ffffff77;border-radius:36px;box-sizing:border-box;background:#183d5788;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center}
+#roll::before{content:"";position:absolute;left:14px;right:14px;top:50%;border-top:1px solid #ffffff55;pointer-events:none}
+#roll-knob{width:52px;height:52px;border-radius:50%;box-sizing:border-box;border:2px solid white;background:#b6d6e5dd;box-shadow:0 2px 9px #122b4080;pointer-events:none;transform:translateX(0)}
+#fire{position:absolute;bottom:100px;right:45.5px;width:85px;height:85px;border-radius:50%;background:#d43655bb}
+
+
 @media(pointer:fine){#mobile{display:none}}@media(pointer:coarse){#help{display:none}}
 /* Prevent Android text selection, long-press callouts, and dragging for every current/future game button. */
 html,body,button,[role="button"],#mobile,#mobile *{
@@ -17,22 +33,658 @@ html,body,button,[role="button"],#mobile,#mobile *{
 }
 button,[role="button"]{touch-action:none;-webkit-user-drag:none}
 ::selection{background:transparent}
-</style></head><body><div id="hud"><b>AIR BRAWL</b><div id="stats"></div></div><div id="help">W/S throttle · Arrows steer & climb · A/D roll · Space fire · R respawn</div><div id="mobile"><button id="fire" data-key="Space">FIRE</button><div id="throttle"><button data-key="KeyW">+</button><button data-key="KeyS">−</button></div><div id="pad"><span></span><button data-key="ArrowUp">▲</button><span></span><button data-key="ArrowLeft">◀</button><button data-key="ArrowDown">▼</button><button data-key="ArrowRight">▶</button></div></div><script type="module">
+
+/* Compact, non-interactive pickup notification; one second hold, then upward fade. */
+#pickup-notice{position:fixed;top:22%;left:50%;transform:translate(-50%,0);z-index:12;pointer-events:none;opacity:0;min-width:185px;max-width:min(76vw,330px);padding:10px 20px;border-radius:12px;text-align:center;background:#102c3bdc;border:2px solid var(--pickup-accent,#fff);box-shadow:0 3px 18px #001b2c80;color:white;font-weight:800;font-size:clamp(16px,3.5vw,23px);letter-spacing:.035em;text-shadow:0 1px 3px #001b2c;white-space:nowrap}
+#pickup-notice.show{animation:pickup-notification 1.55s ease-out both}
+#pickup-notice .pickup-subtitle{display:block;font-size:11px;font-weight:600;letter-spacing:.14em;opacity:.85;margin-bottom:3px}
+@keyframes pickup-notification{0%{opacity:0;transform:translate(-50%,8px)}9%{opacity:1;transform:translate(-50%,0)}67%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-38px)}}
+/* Damage vignette stays behind the controls and HUD and never intercepts input. */
+#damage-vignette{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:0;
+ background:radial-gradient(ellipse at center,transparent 12%,rgba(105,0,0,.13) 35%,rgba(195,0,0,.66) 68%,rgba(225,0,0,1) 100%);
+ transition:opacity .25s linear;}
+</style></head><body><div id="damage-vignette" aria-hidden="true"></div><div id="pickup-notice" role="status" aria-live="polite"></div><div id="aim-hud" aria-hidden="true"><svg viewBox="0 0 180 180">
+<defs><clipPath id="attitude-clip"><circle cx="90" cy="90" r="47"/></clipPath></defs>
+<circle id="attitude-ring" cx="90" cy="90" r="47"/>
+<g clip-path="url(#attitude-clip)"><g id="horizon-rotator">
+<g id="horizon-pitch"><line id="horizon-line" x1="12" y1="90" x2="168" y2="90"/>
+<g id="horizon-minor"><line x1="72" y1="69" x2="108" y2="69"/><line x1="78" y1="79" x2="102" y2="79"/>
+<line x1="78" y1="101" x2="102" y2="101"/><line x1="72" y1="111" x2="108" y2="111"/></g>
+</g></g></g>
+<g id="reticle"><circle cx="90" cy="90" r="12"/><circle cx="90" cy="90" r="2" fill="white" stroke="none"/>
+<line x1="90" y1="66" x2="90" y2="75"/><line x1="90" y1="105" x2="90" y2="114"/>
+<line x1="66" y1="90" x2="75" y2="90"/><line x1="105" y1="90" x2="114" y2="90"/></g>
+</svg></div><div id="minimap-wrap"><canvas id="minimap" width="336" height="336" aria-label="Terrain and enemy minimap"></canvas></div><div id="altimeter" aria-label="Altitude in feet"><canvas id="altimeter-canvas"></canvas></div><div id="hud"><b>AIR BRAWL</b><div id="stats"></div></div><div id="help">W/S throttle · Arrows yaw/pitch · A/D roll · Space fire · Double-tap FIRE for auto-fire · R respawn</div><div id="mobile">
+<button id="fire" data-key="Space">FIRE</button>
+<div id="joystick" role="group" aria-label="Yaw and pitch joystick"><div id="joystick-knob"></div></div>
+<div id="roll" role="group" aria-label="Horizontal roll joystick"><div id="roll-knob"></div></div>
+</div><script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x73c9f7);scene.fog=new THREE.Fog(0x73c9f7,180,650);const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,1200);const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));document.body.appendChild(renderer.domElement);scene.add(new THREE.HemisphereLight(0xffffff,0x63834e,2.3));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(100,180,70);scene.add(sun);
 const mat=c=>new THREE.MeshLambertMaterial({color:c});const white=mat(0xf7f2dd),red=mat(0xc94d49),dark=mat(0x263744),blue=mat(0x4b8ac4),green=mat(0x80b84e),brown=mat(0x775343),gold=mat(0xffde6a);
 function box(parent,w,h,d,m,x=0,y=0,z=0){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);parent.add(o);return o}function plane(color){const g=new THREE.Group();box(g,1.2,.75,5.2,color);box(g,9,.22,1.45,color,0,0,.15);box(g,3.5,.18,1.1,color,0,.2,2);box(g,.22,1.6,1,color,0,.9,2);box(g,.8,.45,1.3,dark,0,.45,-.7);let prop=box(g,3,.15,.12,dark,0,0,-2.85);g.userData.prop=prop;return g}
-const ground=box(scene,1200,2,1200,green,0,-3,0);let water=box(scene,90,.15,1200,blue,0,-1.9,0);for(let i=0;i<95;i++){let x=(Math.random()-.5)*500,z=(Math.random()-.5)*500;if(Math.abs(x)<52)continue;let h=6+Math.random()*22;box(scene,6+Math.random()*10,h,6+Math.random()*10,white,x,h/2-2,z);box(scene,7,.7,8,brown,x,h-1.7,z)}for(let i=0;i<110;i++){let x=(Math.random()-.5)*550,z=(Math.random()-.5)*550;if(Math.abs(x)<65)continue;box(scene,.7,4,.7,brown,x,0,z);let crown=new THREE.Mesh(new THREE.IcosahedronGeometry(3.2,0),green);crown.position.set(x,5,z);scene.add(crown)}
-const player=plane(red);scene.add(player);let speed=28,hp=100,kills=0;function reset(){player.position.set(0,24,75);player.rotation.set(0,Math.PI,0);speed=28;hp=100}reset();const enemies=[];for(let i=0;i<7;i++){let p=plane(i%2?dark:gold);p.position.set((Math.random()-.5)*240,18+Math.random()*65,(Math.random()-.5)*240);scene.add(p);enemies.push({mesh:p,hp:3,phase:Math.random()*6.28,cooldown:Math.random()*3})}const bullets=[];const keys={};addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyR')reset()});addEventListener('keyup',e=>keys[e.code]=false);
-document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys[k]=true});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>keys[k]=false)});
+const solidSurfaces=[];
+// Deep river: translucent top, underwater volume and a real riverbed.
+// Split the terrain into banks so the river has no invisible ground blocking descent.
+const WATER_LEVEL=-1.82, WATER_HALF_WIDTH=45, WATER_DEPTH=32;
+const ground=box(scene,555,2,1200,green,-322.5,-3,0);
+const rightBank=box(scene,555,2,1200,green,322.5,-3,0);
+solidSurfaces.push(ground,rightBank);
+const riverbed=box(scene,90,2,1200,mat(0x476f67),0,WATER_LEVEL-WATER_DEPTH-1,0);
+solidSurfaces.push(riverbed);
+const waterMaterial=new THREE.MeshPhongMaterial({color:0x249ad7,transparent:true,opacity:.43,depthWrite:false,side:THREE.DoubleSide,shininess:95,specular:0x9defff});
+const water=box(scene,90,.08,1200,waterMaterial,0,WATER_LEVEL,0);
+water.renderOrder=2;
+const deepWater=new THREE.Mesh(new THREE.BoxGeometry(90,WATER_DEPTH,1200),new THREE.MeshBasicMaterial({color:0x1463a5,transparent:true,opacity:.075,depthWrite:false,side:THREE.BackSide}));
+deepWater.position.set(0,WATER_LEVEL-WATER_DEPTH/2,0);scene.add(deepWater);
+// Subtle animated ripples on the surface, without making it opaque.
+const rippleLines=[];
+for(let i=0;i<35;i++){
+ const ripple=new THREE.Mesh(new THREE.PlaneGeometry(3+Math.random()*7,.09),new THREE.MeshBasicMaterial({color:0xb2edff,transparent:true,opacity:.16,depthWrite:false,side:THREE.DoubleSide}));
+ ripple.rotation.x=-Math.PI/2;ripple.position.set((Math.random()-.5)*84,WATER_LEVEL+.065,(Math.random()-.5)*1150);
+ ripple.renderOrder=3;scene.add(ripple);rippleLines.push({mesh:ripple,phase:Math.random()*6.28});
+}
+function updateWaterVisuals(time){for(const r of rippleLines){r.mesh.material.opacity=.07+.1*(.5+.5*Math.sin(time*1.7+r.phase));}}
+// Sample the actual aircraft mesh corners in world space. Damage begins only when
+// at least 51% of these aircraft samples are inside the water volume.
+const planeWaterSamples=[];
+function buildPlaneWaterSamples(aircraft){
+ planeWaterSamples.length=0;
+ aircraft.updateMatrixWorld(true);
+ aircraft.traverse(part=>{
+  if(!part.isMesh||part===aircraft.userData.prop)return;
+  const g=part.geometry;g.computeBoundingBox();const b=g.boundingBox;
+  for(const x of [b.min.x,b.max.x])for(const y of [b.min.y,b.max.y])for(const z of [b.min.z,b.max.z]){
+   planeWaterSamples.push({part,local:new THREE.Vector3(x,y,z)});
+  }
+ });
+}
+function planeSubmergedFraction(aircraft){
+ aircraft.updateMatrixWorld(true);
+ let wet=0;
+ for(const s of planeWaterSamples){
+  const v=s.part.localToWorld(s.local.clone());
+  if(Math.abs(v.x)<=WATER_HALF_WIDTH&&Math.abs(v.z)<=600&&v.y<=WATER_LEVEL&&v.y>=WATER_LEVEL-WATER_DEPTH)wet++;
+ }
+ return planeWaterSamples.length?wet/planeWaterSamples.length:0;
+}
+for(let i=0;i<95;i++){let x=(Math.random()-.5)*500,z=(Math.random()-.5)*500;if(Math.abs(x)<52)continue;let h=6+Math.random()*22;solidSurfaces.push(box(scene,6+Math.random()*10,h,6+Math.random()*10,white,x,h/2-2,z));solidSurfaces.push(box(scene,7,.7,8,brown,x,h-1.7,z))}for(let i=0;i<110;i++){let x=(Math.random()-.5)*550,z=(Math.random()-.5)*550;if(Math.abs(x)<65)continue;solidSurfaces.push(box(scene,.7,4,.7,brown,x,0,z));let crown=new THREE.Mesh(new THREE.IcosahedronGeometry(3.2,0),green);crown.position.set(x,5,z);scene.add(crown);solidSurfaces.push(crown)}
+// Simple top-down terrain radar. North stays up; the player stays at the center.
+// World-space objects are sampled from the actual map meshes, so buildings and trees match the terrain.
+// Damage feedback: green >70, orange >50, yellow >15, red <=15.
+// At full HP the screen is clear. Damage gradually brings in a lightly pulsing red edge.
+// Physical scale: this model's propeller spans 3 world units. A representative
+// Spitfire propeller is approximately 10 ft 9 in (10.75 ft) in diameter.
+// Thus 1 world unit = 10.75 / 3 feet, consistently for all aircraft/terrain.
+const PROPELLER_WORLD_UNITS=3;
+const PROPELLER_REAL_FEET=10.75;
+const FEET_PER_WORLD_UNIT=PROPELLER_REAL_FEET/PROPELLER_WORLD_UNITS;
+// The bank terrain top is y=-2 (ground boxes centered at -3 with height 2).
+// This is the 0 ft reference. The river water is slightly above this datum.
+const ALTITUDE_ZERO_Y=-2;
+const altitudeCanvas=document.getElementById('altimeter-canvas');
+const altitudeCtx=altitudeCanvas.getContext('2d');
+function renderAltitudeTape(worldY){
+ const rect=altitudeCanvas.getBoundingClientRect();
+ const dpr=Math.min(window.devicePixelRatio||1,2);
+ const w=Math.round(rect.width*dpr),h=Math.round(rect.height*dpr);
+ if(!w||!h)return;
+ if(altitudeCanvas.width!==w||altitudeCanvas.height!==h){altitudeCanvas.width=w;altitudeCanvas.height=h}
+ const ctx=altitudeCtx;ctx.setTransform(dpr,0,0,dpr,0,0);
+ const W=rect.width,H=rect.height,center=H/2;
+ const feet=(worldY-ALTITUDE_ZERO_Y)*FEET_PER_WORLD_UNIT;
+ const pxPerFoot=0.36;
+ ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='rgba(10,31,44,.09)';ctx.beginPath();ctx.roundRect(0,0,W,H,8);ctx.fill();
+ ctx.strokeStyle='rgba(215,240,251,.65)';ctx.lineWidth=1;
+ ctx.beginPath();ctx.moveTo(13,5);ctx.lineTo(13,H-5);ctx.stroke();
+ const lower=Math.floor((feet-(center+20)/pxPerFoot)/25)*25;
+ const upper=feet+(center+20)/pxPerFoot;
+ ctx.textAlign='left';ctx.textBaseline='middle';ctx.font='600 12px system-ui';
+ for(let mark=lower;mark<=upper;mark+=25){
+  const y=center-(mark-feet)*pxPerFoot;if(y<8||y>H-8)continue;
+  const major=mark%100===0,medium=mark%50===0;
+  ctx.strokeStyle=major?'#f1f9ff':'#a4c8d9';ctx.lineWidth=major?2:1;
+  ctx.beginPath();ctx.moveTo(13,y);ctx.lineTo(major?33:medium?26:21,y);ctx.stroke();
+  if(major){ctx.fillStyle='#f5fbff';ctx.fillText(mark.toLocaleString('en-US'),39,y)}
+ }
+ // Fixed aircraft-level pointer, its boxed value reads the exact current altitude.
+ ctx.fillStyle='#ffdc66';ctx.beginPath();ctx.moveTo(0,center);ctx.lineTo(13,center-8);ctx.lineTo(13,center+8);ctx.closePath();ctx.fill();
+ ctx.fillStyle='rgba(23,59,73,.12)';ctx.fillRect(31,center-16,W-35,32);
+ ctx.strokeStyle='#ffdc66';ctx.lineWidth=1.5;ctx.strokeRect(31.5,center-15.5,W-36,31);
+ ctx.font='bold 15px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(Math.round(feet).toLocaleString('en-US'),(W+31)/2,center);
+ ctx.textAlign='center';ctx.font='bold 10px system-ui';ctx.fillStyle='#e6f6ff';ctx.fillText('ALT · FT',W/2,14);
+}
+const attitudeRing=document.getElementById('attitude-ring');
+const damageVignette=document.getElementById('damage-vignette');
+function updateDamageHud(hullHP,time){
+ const pct=THREE.MathUtils.clamp(hullHP,0,100);
+ const color=pct>70?'#44e879':pct>50?'#ff9b35':pct>15?'#ffe04a':'#f43b45';
+ attitudeRing.style.stroke=color;
+ const damage=1-pct/100;
+ const pulse=.91+.09*Math.sin(time*3.6);
+ damageVignette.style.opacity=(Math.pow(damage,.92)*1.12*pulse).toFixed(3);
+}
+const minimap=document.getElementById('minimap');
+const mapCtx=minimap.getContext('2d');
+const MAP_CENTER=168, MAP_SCALE=.72; // pixels per world unit (about 467 units across)
+const mapFeatures=solidSurfaces.filter(m=>m!==ground&&m!==rightBank&&m!==riverbed&&m!==water).map(m=>{
+ const w=m.geometry.parameters?.width||0, d=m.geometry.parameters?.depth||0;
+ const isTree=(m.geometry.type==='IcosahedronGeometry'||(w<2&&d<2));
+ return {x:m.position.x,z:m.position.z,w:w||6,d:d||6,isTree,isRoof:!isTree&&m.position.y>3&&m.geometry.parameters?.height<2};
+});
+// Static map geometry is captured once at map creation; no mesh position reads during drawing.
+// Destructible/dynamic map objects can use a separate event-driven cache in later maps.
+// Enemy positions are read live every rendered frame. Keep floating-point coordinates
+// all the way to Canvas rendering so aircraft markers move by fractional pixels.
+// Static terrain/buildings/trees remain in the one-time mapFeatures cache.
+const enemyRadarSnapshot=[];
+function refreshEnemyRadar(){
+ enemyRadarSnapshot.length=0;
+ const playerAltitude=player.position.y;
+ for(const e of enemies)enemyRadarSnapshot.push({
+  x:e.mesh.position.x,z:e.mesh.position.z,
+  altitudeDifference:e.mesh.position.y-playerAltitude
+ });
+}
+// Rubber-band map camera: static features are cached, while the viewport follows
+// with a small soft margin instead of snapping to every movement of the aircraft.
+const MAP_RUBBER_MARGIN=20; // minimap canvas pixels (10 CSS pixels)
+const MAP_CAMERA_RESPONSE=5.5; // exponential follow strength, seconds^-1
+let mapViewX=0,mapViewZ=0;
+function renderMinimap(dt){
+ const elapsed=dt;
+ // Keep the aircraft inside a soft central zone. The map catches up smoothly,
+ // with frame-rate-independent easing and no per-frame world-object queries.
+ const dx=(player.position.x-mapViewX)*MAP_SCALE;
+ const dz=(player.position.z-mapViewZ)*MAP_SCALE;
+ const excessX=Math.sign(dx)*Math.max(0,Math.abs(dx)-MAP_RUBBER_MARGIN);
+ const excessZ=Math.sign(dz)*Math.max(0,Math.abs(dz)-MAP_RUBBER_MARGIN);
+ const follow=1-Math.exp(-MAP_CAMERA_RESPONSE*elapsed);
+ mapViewX+=excessX/MAP_SCALE*follow;
+ mapViewZ+=excessZ/MAP_SCALE*follow;
+ const ctx=mapCtx,W=336,H=336;
+ ctx.clearRect(0,0,W,H);ctx.fillStyle='#8dc760';ctx.fillRect(0,0,W,H);
+ const toX=x=>MAP_CENTER+(x-mapViewX)*MAP_SCALE;
+ const toY=z=>MAP_CENTER+(z-mapViewZ)*MAP_SCALE;
+ // Water channel, world x=-45..45, z=-600..600.
+ ctx.fillStyle='#4b9ed5';ctx.fillRect(toX(-45),0,90*MAP_SCALE,H);
+ for(const f of mapFeatures){const x=toX(f.x),y=toY(f.z);
+  if(x<-15||x>W+15||y<-15||y>H+15)continue;
+  if(f.isTree){ctx.fillStyle='#327b38';ctx.beginPath();ctx.arc(x,y,Math.max(2,3.3*MAP_SCALE),0,Math.PI*2);ctx.fill()}
+  else {ctx.fillStyle=f.isRoof?'#a36945':'#d7c5a0';ctx.fillRect(x-f.w*MAP_SCALE/2,y-f.d*MAP_SCALE/2,Math.max(2,f.w*MAP_SCALE),Math.max(2,f.d*MAP_SCALE))}
+ }
+ // Live enemy positions, drawn at subpixel canvas coordinates. 5-unit altitude tolerance.
+ for(const e of enemyRadarSnapshot){const x=toX(e.x),y=toY(e.z);
+  if(x<0||x>W||y<0||y>H)continue;
+  const diff=e.altitudeDifference;
+  ctx.fillStyle=diff>5?'#ff2929':diff< -5?'rgba(225,20,30,.30)':'#cb202a';
+  ctx.beginPath();ctx.arc(x,y,5.5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff8';ctx.lineWidth=1;ctx.stroke();
+ }
+ // Aircraft pointer indicates heading relative to north.
+ const heading=new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);
+ const angle=Math.atan2(heading.x,-heading.z);
+ ctx.save();ctx.translate(toX(player.position.x),toY(player.position.z));ctx.rotate(angle);
+ ctx.fillStyle='#ffffff';ctx.strokeStyle='#15364a';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(8,9);ctx.lineTo(0,5);ctx.lineTo(-8,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ ctx.strokeStyle='#ffffff99';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(MAP_CENTER,12);ctx.lineTo(MAP_CENTER,24);ctx.stroke();
+ ctx.fillStyle='#fff';ctx.font='bold 17px system-ui';ctx.textAlign='center';ctx.fillText('N',MAP_CENTER,21);
+}
+
+// Weapon-glass notification: replace the previous popup if pickups happen quickly.
+const pickupNotice=document.getElementById('pickup-notice');
+function showPickupNotice(name,accent){
+ pickupNotice.style.setProperty('--pickup-accent',accent);
+ pickupNotice.replaceChildren();
+ const subtitle=document.createElement('span');subtitle.className='pickup-subtitle';subtitle.textContent='WEAPON EQUIPPED';
+ pickupNotice.append(subtitle,document.createTextNode(name));
+ pickupNotice.classList.remove('show');
+ void pickupNotice.offsetWidth; // restart animation for repeated pickups
+ pickupNotice.classList.add('show');
+}
+
+// Map pickup: a destructible normal-ammo glass panel suspended over the water.
+// Game modes/maps can override this respawn time later.
+const AMMO_PANEL_RESPAWN_SECONDS=10;
+const ammoPanel={active:true,respawnRemaining:0};
+const panelCanvas=document.createElement('canvas');panelCanvas.width=1024;panelCanvas.height=512;
+const panelCtx=panelCanvas.getContext('2d');
+panelCtx.clearRect(0,0,1024,512);
+panelCtx.fillStyle='rgba(55,205,255,.28)';panelCtx.fillRect(0,0,1024,512);
+panelCtx.strokeStyle='#b5f5ff';panelCtx.lineWidth=22;panelCtx.strokeRect(12,12,1000,488);
+panelCtx.fillStyle='#0b425a';panelCtx.beginPath();panelCtx.arc(210,256,103,0,Math.PI*2);panelCtx.fill();
+panelCtx.fillStyle='#8beaff';panelCtx.beginPath();panelCtx.ellipse(210,256,68,22,0,0,Math.PI*2);panelCtx.fill();
+panelCtx.fillStyle='#ffffff';panelCtx.font='bold 78px system-ui';panelCtx.textAlign='center';panelCtx.fillText('NORMAL',660,230);panelCtx.fillText('BULLETS',660,327);
+const panelTexture=new THREE.CanvasTexture(panelCanvas);panelTexture.colorSpace=THREE.SRGBColorSpace;
+const panelMaterial=new THREE.MeshBasicMaterial({map:panelTexture,transparent:true,side:THREE.DoubleSide,depthWrite:false});
+const panelGlass=new THREE.Mesh(new THREE.PlaneGeometry(29,14),panelMaterial);
+panelGlass.position.set(0,25,0);scene.add(panelGlass);
+const panelFrame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(29.4,14.4,.3)),new THREE.LineBasicMaterial({color:0x8beaff}));
+panelFrame.position.copy(panelGlass.position);scene.add(panelFrame);
+function setPanelVisible(visible){panelGlass.visible=visible;panelFrame.visible=visible;ammoPanel.active=visible}
+function breakAmmoPanel(){if(!ammoPanel.active)return;setPanelVisible(false);ammoPanel.respawnRemaining=AMMO_PANEL_RESPAWN_SECONDS;hp-=10;playerAmmo='regular';showPickupNotice('NORMAL BULLETS','#8beaff');
+ const flash=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),new THREE.MeshBasicMaterial({color:0x8beaff,transparent:true,opacity:.5}));
+ flash.position.copy(panelGlass.position);scene.add(flash);explosions.push({mesh:flash,age:0,radius:12});
+}
+function updateAmmoPanel(dt,previousPosition){
+ if(!ammoPanel.active){ammoPanel.respawnRemaining-=dt;if(ammoPanel.respawnRemaining<=0)setPanelVisible(true);return}
+ // Swept aircraft collision against the thin vertical pane, including the aircraft wings.
+ const z0=previousPosition.z-panelGlass.position.z,z1=player.position.z-panelGlass.position.z;
+ const crosses=(z0*z1<=0)||Math.min(Math.abs(z0),Math.abs(z1))<2.3;
+ if(!crosses)return;
+ const frac=Math.abs(z0-z1)>1e-6?Math.max(0,Math.min(1,z0/(z0-z1))):0;
+ const x=THREE.MathUtils.lerp(previousPosition.x,player.position.x,frac);
+ const y=THREE.MathUtils.lerp(previousPosition.y,player.position.y,frac);
+ if(Math.abs(x-panelGlass.position.x)<17&&Math.abs(y-panelGlass.position.y)<9)breakAmmoPanel();
+}
+// Second glass pickup: twin normal machine guns. Independent 10-second respawn.
+const twinPanel={active:true,respawnRemaining:0};
+const twinCanvas=document.createElement('canvas');twinCanvas.width=1024;twinCanvas.height=512;
+const twinCtx=twinCanvas.getContext('2d');
+twinCtx.fillStyle='rgba(75,170,255,.28)';twinCtx.fillRect(0,0,1024,512);
+twinCtx.strokeStyle='#a6d0ff';twinCtx.lineWidth=22;twinCtx.strokeRect(12,12,1000,488);
+twinCtx.fillStyle='#103f7a';twinCtx.beginPath();twinCtx.arc(210,256,105,0,Math.PI*2);twinCtx.fill();
+twinCtx.strokeStyle='#a6d0ff';twinCtx.lineWidth=20;twinCtx.lineCap='round';
+for(const xx of [174,246]){twinCtx.beginPath();twinCtx.moveTo(xx,175);twinCtx.lineTo(xx,337);twinCtx.stroke();}
+twinCtx.fillStyle='#fff';twinCtx.textAlign='center';twinCtx.font='bold 79px system-ui';
+twinCtx.fillText('DOUBLE',660,230);twinCtx.fillText('GUN',660,330);
+const twinTexture=new THREE.CanvasTexture(twinCanvas);twinTexture.colorSpace=THREE.SRGBColorSpace;
+const twinGlass=new THREE.Mesh(new THREE.PlaneGeometry(29,14),new THREE.MeshBasicMaterial({map:twinTexture,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+twinGlass.position.set(0,25,-105);scene.add(twinGlass);
+const twinFrame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(29.4,14.4,.3)),new THREE.LineBasicMaterial({color:0xa6d0ff}));
+twinFrame.position.copy(twinGlass.position);scene.add(twinFrame);
+function setTwinVisible(v){twinPanel.active=v;twinGlass.visible=v;twinFrame.visible=v}
+function updateTwinPanel(dt,previousPosition){
+ if(!twinPanel.active){twinPanel.respawnRemaining-=dt;if(twinPanel.respawnRemaining<=0)setTwinVisible(true);return}
+ const z0=previousPosition.z-twinGlass.position.z,z1=player.position.z-twinGlass.position.z;
+ if(!(z0*z1<=0||Math.min(Math.abs(z0),Math.abs(z1))<2.3))return;
+ const f=Math.abs(z0-z1)>1e-6?Math.max(0,Math.min(1,z0/(z0-z1))):0;
+ const x=THREE.MathUtils.lerp(previousPosition.x,player.position.x,f);
+ const y=THREE.MathUtils.lerp(previousPosition.y,player.position.y,f);
+ if(Math.abs(x-twinGlass.position.x)<17&&Math.abs(y-twinGlass.position.y)<9){
+  setTwinVisible(false);twinPanel.respawnRemaining=AMMO_PANEL_RESPAWN_SECONDS;
+  hp-=10;playerAmmo='double';showPickupNotice('DOUBLE GUN','#a6d0ff');
+  const flash=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),new THREE.MeshBasicMaterial({color:0xa6d0ff,transparent:true,opacity:.5}));
+  flash.position.copy(twinGlass.position);scene.add(flash);explosions.push({mesh:flash,age:0,radius:12});
+ }
+}
+// Third glass pickup: sticky bombs. Uses the same swept collision and respawn rules.
+const stickyPanel={active:true,respawnRemaining:0};
+const stickyCanvas=document.createElement('canvas');stickyCanvas.width=1024;stickyCanvas.height=512;
+const stickyCtx=stickyCanvas.getContext('2d');
+stickyCtx.fillStyle='rgba(255,155,50,.29)';stickyCtx.fillRect(0,0,1024,512);
+stickyCtx.strokeStyle='#ffd49b';stickyCtx.lineWidth=22;stickyCtx.strokeRect(12,12,1000,488);
+stickyCtx.fillStyle='#75360e';stickyCtx.beginPath();stickyCtx.arc(210,256,105,0,Math.PI*2);stickyCtx.fill();
+stickyCtx.fillStyle='#ffb34d';stickyCtx.beginPath();stickyCtx.arc(210,256,60,0,Math.PI*2);stickyCtx.fill();
+stickyCtx.fillStyle='#fff3cf';stickyCtx.beginPath();stickyCtx.arc(210,256,21,0,Math.PI*2);stickyCtx.fill();
+stickyCtx.fillStyle='#ffffff';stickyCtx.textAlign='center';stickyCtx.font='bold 78px system-ui';
+stickyCtx.fillText('STICKY',660,230);stickyCtx.fillText('BOMBS',660,327);
+const stickyTexture=new THREE.CanvasTexture(stickyCanvas);stickyTexture.colorSpace=THREE.SRGBColorSpace;
+const stickyGlass=new THREE.Mesh(new THREE.PlaneGeometry(29,14),new THREE.MeshBasicMaterial({map:stickyTexture,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+stickyGlass.position.set(0,25,105);scene.add(stickyGlass);
+const stickyFrame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(29.4,14.4,.3)),new THREE.LineBasicMaterial({color:0xffb34d}));
+stickyFrame.position.copy(stickyGlass.position);scene.add(stickyFrame);
+function setStickyVisible(v){stickyPanel.active=v;stickyGlass.visible=v;stickyFrame.visible=v}
+function updateStickyPanel(dt,previousPosition){
+ if(!stickyPanel.active){stickyPanel.respawnRemaining-=dt;if(stickyPanel.respawnRemaining<=0)setStickyVisible(true);return}
+ const z0=previousPosition.z-stickyGlass.position.z,z1=player.position.z-stickyGlass.position.z;
+ if(!(z0*z1<=0||Math.min(Math.abs(z0),Math.abs(z1))<2.3))return;
+ const f=Math.abs(z0-z1)>1e-6?Math.max(0,Math.min(1,z0/(z0-z1))):0;
+ const x=THREE.MathUtils.lerp(previousPosition.x,player.position.x,f);
+ const y=THREE.MathUtils.lerp(previousPosition.y,player.position.y,f);
+ if(Math.abs(x-stickyGlass.position.x)<17&&Math.abs(y-stickyGlass.position.y)<9){
+  setStickyVisible(false);stickyPanel.respawnRemaining=AMMO_PANEL_RESPAWN_SECONDS;
+  hp-=10;playerAmmo='sticky';showPickupNotice('STICKY BOMBS','#ffb34d');
+  const flash=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),new THREE.MeshBasicMaterial({color:0xffb34d,transparent:true,opacity:.5}));
+  flash.position.copy(stickyGlass.position);scene.add(flash);explosions.push({mesh:flash,age:0,radius:12});
+ }
+}
+// Each airplane owns a healing policy. Other modes can switch to 'none' and use repairs/pickups.
+const HEALING={OVER_TIME:'over-time',NONE:'none',delay:10,rate:.03};
+function setupHealing(aircraft,maxHp,healingType=HEALING.OVER_TIME){
+ aircraft.userData.health={maxHp,healingType,lastDamageAt:-Infinity,healingProgress:0};
+}
+function recordDamage(aircraft,time){const h=aircraft.userData.health;if(h){h.lastDamageAt=time;h.healingProgress=0}}
+function healAircraft(aircraft,currentHp,dt,time){
+ const h=aircraft.userData.health;
+ if(!h||h.healingType!==HEALING.OVER_TIME||currentHp<=0||currentHp>=h.maxHp)return currentHp;
+ if(time-h.lastDamageAt<HEALING.delay)return currentHp;
+ h.healingProgress+=dt;
+ while(h.healingProgress>=1){currentHp=Math.min(h.maxHp,currentHp+h.maxHp*HEALING.rate);h.healingProgress-=1}
+ return currentHp;
+}
+let playerAmmo='sticky';const player=plane(red);setupHealing(player,100);scene.add(player);let speed=28,targetSpeed=28,hp=100,kills=0;let playerInvulnerable=0;function reset(){player.position.set(0,24,75);player.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI);speed=28;targetSpeed=28;hp=100;recordDamage(player,0);playerAmmo='sticky';playerInvulnerable=1.2}reset();mapViewX=player.position.x;mapViewZ=player.position.z;buildPlaneWaterSamples(player);const enemies=[];for(let i=0;i<7;i++){let p=plane(i%2?dark:gold);p.position.set((Math.random()-.5)*240,18+Math.random()*65,(Math.random()-.5)*240);scene.add(p);setupHealing(p,3);enemies.push({mesh:p,hp:3,phase:Math.random()*6.28,cooldown:Math.random()*3})}const bullets=[];const keys={};addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyR'){reset();selectThrottleStage(3);speed=targetSpeed}});addEventListener('keyup',e=>keys[e.code]=false);
+const MIN_SPEED=12,MAX_SPEED=65;
+// Throttle indicator fills the joystick center vertically from bottom to top.
+// 1/3 -> 2/3 -> full -> 1/3, with no labels or numeric text.
+let throttleStage=3;
+function selectThrottleStage(stage){
+ throttleStage=stage;
+ targetSpeed=MIN_SPEED+(MAX_SPEED-MIN_SPEED)*stage/3;
+ document.getElementById('joystick-knob').style.setProperty('--throttle-empty',`${100-stage*100/3}%`);
+}
+// Fire: hold for manual shooting, or double-tap quickly to toggle automatic fire.
+const fireButton=document.getElementById('fire');
+let autoFire=false,fireHeld=false,lastFireTap=-Infinity;
+const FIRE_DOUBLE_TAP_MS=330;
+function refreshFireButton(){fireButton.textContent=autoFire?'AUTO FIRE':'FIRE';fireButton.style.background=autoFire?'#ff8d30dd':'#d43655bb';fireButton.setAttribute('aria-pressed',String(autoFire))}
+fireButton.addEventListener('pointerdown',e=>{
+ e.preventDefault();fireButton.setPointerCapture(e.pointerId);
+ const now=performance.now();
+ if(now-lastFireTap<=FIRE_DOUBLE_TAP_MS){autoFire=!autoFire;lastFireTap=-Infinity;fireHeld=false;}
+ else {lastFireTap=now;fireHeld=true}
+ refreshFireButton();
+});
+for(const ev of ['pointerup','pointercancel','lostpointercapture'])fireButton.addEventListener(ev,()=>{fireHeld=false});
+// A roll stick with exactly one axis: vertical pointer movement is ignored.
+const rollPad=document.getElementById('roll'),rollKnob=document.getElementById('roll-knob');
+const rollStick={x:0,smoothedX:0,pointer:null};
+const ROLL_RANGE=39,ROLL_DEADZONE=.12;
+function moveRollStick(e){
+ const r=rollPad.getBoundingClientRect();
+ const x=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/ROLL_RANGE));
+ rollKnob.style.transform=`translateX(${x*ROLL_RANGE}px)`;
+ const m=Math.max(0,(Math.abs(x)-ROLL_DEADZONE)/(1-ROLL_DEADZONE));
+ rollStick.x=Math.sign(x)*m*m;
+}
+function releaseRollStick(e){if(e&&rollStick.pointer!==e.pointerId)return;
+ rollStick.pointer=null;rollStick.x=0;rollKnob.style.transform='translateX(0)'}
+rollPad.addEventListener('pointerdown',e=>{if(rollStick.pointer!==null)return;
+ e.preventDefault();e.stopPropagation();rollStick.pointer=e.pointerId;
+ rollPad.setPointerCapture(e.pointerId);moveRollStick(e)});
+rollPad.addEventListener('pointermove',e=>{if(e.pointerId===rollStick.pointer){e.preventDefault();moveRollStick(e)}});
+for(const ev of ['pointerup','pointercancel','lostpointercapture'])rollPad.addEventListener(ev,releaseRollStick);
+
 /* Capture phase also protects controls added in later versions. */
 document.addEventListener('contextmenu',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
 document.addEventListener('selectstart',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
 document.addEventListener('dragstart',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
 document.addEventListener('touchstart',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},{passive:false,capture:true});
-let shot=0;const clock=new THREE.Clock();function shoot(origin,dir,hostile=false){let mesh=new THREE.Mesh(new THREE.SphereGeometry(.22,6,6),hostile?red:gold);mesh.position.copy(origin);scene.add(mesh);bullets.push({mesh,velocity:dir.multiplyScalar(140),life:2.5,hostile})}
-function update(dt,t){if(keys.KeyW)speed=Math.min(65,speed+25*dt);if(keys.KeyS)speed=Math.max(12,speed-25*dt);const turn=(Number(!!keys.ArrowLeft)-Number(!!keys.ArrowRight))*1.25;const pitch=(Number(!!keys.ArrowDown)-Number(!!keys.ArrowUp))*.9;player.rotateY(turn*dt);player.rotateX(pitch*dt);player.rotateZ((Number(!!keys.KeyA)-Number(!!keys.KeyD))*.9*dt);player.rotation.z*=Math.max(0,1-dt*.45);player.userData.prop.rotation.z+=dt*35;let forward=new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);player.position.addScaledVector(forward,speed*dt);if(player.position.y<2){hp-=40*dt;player.position.y=2}if(Math.abs(player.position.x)>550||Math.abs(player.position.z)>550)player.position.multiplyScalar(1-.08*dt);shot-=dt;if(keys.Space&&shot<=0){shoot(player.localToWorld(new THREE.Vector3(0,0,-3)),forward.clone());shot=.13}
-for(const e of enemies){const p=e.mesh;e.phase+=dt*.5;p.rotation.y+=dt*(.24+Math.sin(e.phase)*.2);p.rotation.x=Math.sin(e.phase*.8)*.15;p.userData.prop.rotation.z+=dt*25;const f=new THREE.Vector3(0,0,-1).applyQuaternion(p.quaternion);p.position.addScaledVector(f,dt*22);p.position.y+=Math.sin(e.phase)*dt*3;if(p.position.y<12)p.position.y=12;if(p.position.distanceTo(player.position)>290){p.position.copy(player.position).add(new THREE.Vector3((Math.random()-.5)*180,20,(Math.random()-.5)*180))}e.cooldown-=dt;if(e.cooldown<0&&p.position.distanceTo(player.position)<110){const d=player.position.clone().sub(p.position).normalize();shoot(p.position.clone(),d,true);e.cooldown=1.7+Math.random()*2}}
-for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.mesh.position.addScaledVector(b.velocity,dt);b.life-=dt;let hit=false;if(b.hostile){if(b.mesh.position.distanceTo(player.position)<3){hp-=12;hit=true}}else{for(const e of enemies){if(b.mesh.position.distanceTo(e.mesh.position)<4){e.hp--;hit=true;if(e.hp<=0){kills++;e.hp=3;e.mesh.position.copy(player.position).add(new THREE.Vector3((Math.random()-.5)*180,25,(Math.random()-.5)*180))}break}}}if(hit||b.life<=0){scene.remove(b.mesh);b.mesh.geometry.dispose();bullets.splice(i,1)}}if(hp<=0)reset();const desired=player.localToWorld(new THREE.Vector3(0,6,19));camera.position.lerp(desired,Math.min(1,dt*4));const look=player.localToWorld(new THREE.Vector3(0,1,-24));camera.lookAt(look);document.getElementById('stats').textContent=`HP ${Math.max(0,Math.round(hp))}  |  Speed ${Math.round(speed)}  |  Kills ${kills}  |  Alt ${Math.round(player.position.y)}`}
+/* Analog yaw/pitch joystick: small dead zone, reduced response, and eased motion. */
+const joystick=document.getElementById('joystick'),knob=document.getElementById('joystick-knob');
+const stick={x:0,y:0,smoothedX:0,smoothedY:0,pointer:null,centerPress:false,moved:false,startX:0,startY:0};
+const STICK_RADIUS=43, STICK_DEADZONE=.13;
+selectThrottleStage(3);speed=targetSpeed;
+function moveStick(e){
+ const r=joystick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+ let x=(e.clientX-cx)/STICK_RADIUS,y=(e.clientY-cy)/STICK_RADIUS;
+ const len=Math.hypot(x,y);if(len>1){x/=len;y/=len}
+ knob.style.transform=`translate(${x*STICK_RADIUS}px,${y*STICK_RADIUS}px)`;
+ const magnitude=Math.min(1,Math.hypot(x,y));
+ const amount=Math.max(0,(magnitude-STICK_DEADZONE)/(1-STICK_DEADZONE));
+ const shaped=amount*amount; // precision near center; full steering at edge
+ stick.x=magnitude?x/magnitude*shaped:0;
+ stick.y=magnitude?y/magnitude*shaped:0;
+}
+function releaseStick(e){if(e&&stick.pointer!==e.pointerId)return;
+ if(e&&e.type==='pointerup'&&stick.centerPress&&!stick.moved)selectThrottleStage(throttleStage%3+1);
+ stick.centerPress=false;stick.moved=false;stick.pointer=null;stick.x=0;stick.y=0;knob.style.transform='translate(0,0)'}
+joystick.addEventListener('pointerdown',e=>{
+ if(stick.pointer!==null)return;
+ e.preventDefault();e.stopPropagation();stick.pointer=e.pointerId;
+ const r=joystick.getBoundingClientRect();
+ stick.startX=e.clientX;stick.startY=e.clientY;stick.moved=false;
+ stick.centerPress=Math.hypot(e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2)<=29;
+ joystick.setPointerCapture(e.pointerId);
+ if(!stick.centerPress)moveStick(e);
+});
+joystick.addEventListener('pointermove',e=>{if(stick.pointer===e.pointerId){e.preventDefault();if(Math.hypot(e.clientX-stick.startX,e.clientY-stick.startY)>10)stick.moved=true;if(stick.moved)moveStick(e)}});
+for(const ev of ['pointerup','pointercancel','lostpointercapture'])joystick.addEventListener(ev,releaseStick);
+addEventListener('blur',()=>{releaseStick();releaseRollStick();fireHeld=false;for(const k in keys)keys[k]=false});
+// Projectile registry: add more types here when weapon switching is introduced.
+const PROJECTILES={
+ regular:{speed:185,life:2.5,damage:12,radius:.22},
+ sticky:{speed:175,life:5,damage:58,blastRadius:18,fuse:1.8,radius:.48}
+};
+const botAmmo='regular';
+let shot=0;
+const clock=new THREE.Clock();
+const explosions=[];
+const explodingBots=new Set();
+const tempBox=new THREE.Box3();
+
+const CRASH_SETTINGS={groundY:2,gravity:22,spinRate:2.8,smokeInterval:.07};
+// Reserved campaign integration: survivable crash landing, pilot status, repairs and airworthiness.
+// In arcade mode an impact explodes and respawns; campaign may intercept crash events.
+const crashMode={name:'arcade',onLanding:null};
+const playerCrash={active:false,velocity:new THREE.Vector3(),smokeTimer:0};
+const smoke=[];
+function addSmoke(pos){
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,6,5),new THREE.MeshBasicMaterial({color:0x34383c,transparent:true,opacity:.6,depthWrite:false}));
+ mesh.position.copy(pos);mesh.scale.setScalar(.7+Math.random()*.5);scene.add(mesh);
+ smoke.push({mesh,age:0,life:1.4});
+}
+function tickSmoke(dt){
+ for(let i=smoke.length-1;i>=0;i--){const p=smoke[i];p.age+=dt;p.mesh.position.y+=dt*4;
+ p.mesh.scale.multiplyScalar(1+dt*.5);p.mesh.material.opacity=.6*Math.max(0,1-p.age/p.life);
+ if(p.age>=p.life){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();smoke.splice(i,1)}}
+}
+function beginPlayerCrash(){
+ if(playerCrash.active)return;
+ playerCrash.active=true;hp=0;autoFire=false;fireHeld=false;refreshFireButton();
+ playerCrash.velocity.copy(new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion)).multiplyScalar(speed*.7);
+ playerCrash.velocity.y=Math.min(0,playerCrash.velocity.y);playerCrash.smokeTimer=0;
+}
+function tickPlayerCrash(dt){
+ const c=playerCrash;c.smokeTimer-=dt;
+ if(c.smokeTimer<=0){addSmoke(player.position);c.smokeTimer+=CRASH_SETTINGS.smokeInterval}
+ c.velocity.y-=CRASH_SETTINGS.gravity*dt;player.position.addScaledVector(c.velocity,dt);
+ player.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z_AXIS,CRASH_SETTINGS.spinRate*dt));
+ player.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(X_AXIS,.6*dt));player.quaternion.normalize();
+ if(player.position.y<=(Math.abs(player.position.x)<=WATER_HALF_WIDTH?WATER_LEVEL-WATER_DEPTH+1:CRASH_SETTINGS.groundY)){
+  const pos=player.position.clone();
+  const event={position:pos.clone(),impactSpeed:c.velocity.length(),plane:player,mode:crashMode.name};
+  if(crashMode.onLanding&&crashMode.onLanding(event)===true)return;
+  player.position.set(10000,10000,10000);playerCrash.active=false;
+  explosion(pos,13,36,'aircraft');reset();selectThrottleStage(3);speed=targetSpeed;
+ }
+}
+function beginBotCrash(e){
+ if(e.crashing)return;e.crashing=true;e.smokeTimer=0;
+ e.crashVelocity=new THREE.Vector3(0,0,-1).applyQuaternion(e.mesh.quaternion).multiplyScalar(14);
+ e.crashVelocity.y=Math.min(0,e.crashVelocity.y);
+}
+function tickBotCrash(e,dt){
+ e.smokeTimer-=dt;if(e.smokeTimer<=0){addSmoke(e.mesh.position);e.smokeTimer+=CRASH_SETTINGS.smokeInterval}
+ e.crashVelocity.y-=CRASH_SETTINGS.gravity*dt;e.mesh.position.addScaledVector(e.crashVelocity,dt);
+ e.mesh.rotateZ(CRASH_SETTINGS.spinRate*dt);e.mesh.rotateX(.5*dt);
+ if(e.mesh.position.y<=(Math.abs(e.mesh.position.x)<=WATER_HALF_WIDTH?WATER_LEVEL-WATER_DEPTH+1:CRASH_SETTINGS.groundY)){
+  const pos=e.mesh.position.clone();e.mesh.position.set(10000,10000,10000);
+  e.crashing=false;kills++;explosion(pos,13,36,'aircraft');respawnBot(e);
+ }
+}
+
+function removeBullet(i){
+ const b=bullets[i];scene.remove(b.mesh);b.mesh.geometry.dispose();bullets.splice(i,1);
+}
+function spawnBullet(origin,dir,type,owner){
+ const spec=PROJECTILES[type];
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(spec.radius,10,8),
+ new THREE.MeshBasicMaterial({color:type==='sticky'?0xff9e29:owner==='player'?0xffde6a:0x77eaff}));
+ mesh.position.copy(origin);scene.add(mesh);
+ bullets.push({mesh,type,owner,velocity:dir.clone().normalize().multiplyScalar(spec.speed),
+ life:spec.life,stuck:false,fuse:spec.fuse||0,attached:null,localOffset:null,age:0});
+}
+function respawnBot(e){
+ e.crashing=false;e.hp=3;recordDamage(e.mesh,clock.elapsedTime);e.mesh.position.copy(player.position).add(new THREE.Vector3((Math.random()-.5)*180,25,(Math.random()-.5)*180));
+ e.mesh.rotation.set(0,Math.random()*Math.PI*2,0);
+}
+// Fireball + expanding dark smoke, separate from the gameplay damage radius.
+const FIRE_SMOKE_PALETTE=[0xffd86a,0xff8d24,0xe74812,0x5b5654,0x2d3033,0x181c20];
+function createBlastVisual(position,radius){
+ const pieces=[];
+ const count=Math.min(34,Math.max(18,Math.round(radius*1.25)));
+ for(let i=0;i<count;i++){
+  const fire=i<count*.43;
+  const color=FIRE_SMOKE_PALETTE[fire?Math.floor(Math.random()*3):3+Math.floor(Math.random()*3)];
+  const mat=new THREE.MeshBasicMaterial({color,transparent:true,opacity:fire?.88:.58,depthWrite:false});
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,7,6),mat);
+  mesh.position.copy(position);
+  const direction=new THREE.Vector3(Math.random()-.5,Math.random()*.75-.2,Math.random()-.5).normalize();
+  const speed=(fire?12:7)+Math.random()*(fire?15:10);
+  const size=(fire?.8:1.2)+Math.random()*(fire?1.1:1.7);
+  mesh.scale.setScalar(size);scene.add(mesh);
+  pieces.push({mesh,direction,speed,size,fire,age:0,life:fire?.3+Math.random()*.32:.75+Math.random()*.75});
+ }
+ return pieces;
+}
+function explosion(position,radius,damage,source){
+ explosions.push({particles:createBlastVisual(position,radius),age:0,radius});
+ const distPlayer=position.distanceTo(player.position);
+ if(!playerCrash.active&&playerInvulnerable<=0 && distPlayer<radius+2.5){
+  hp-=damage*Math.max(0,1-distPlayer/(radius+2.5));
+ }
+ for(const e of enemies){
+  const dist=position.distanceTo(e.mesh.position);
+  if(!e.crashing&&dist<radius+3){
+   e.hp-=damage/18*Math.max(0,1-dist/(radius+3));
+   if(e.hp<=0&&!e.crashing)destroyBot(e);
+  }
+ }
+}
+function destroyBot(e){beginBotCrash(e)}
+function destroyPlayer(){beginPlayerCrash()}
+function segmentSphere(a,b,center,radius){
+ const ab=b.clone().sub(a), lenSq=ab.lengthSq();
+ const t=lenSq?Math.max(0,Math.min(1,center.clone().sub(a).dot(ab)/lenSq)):0;
+ const hit=a.clone().addScaledVector(ab,t);
+ return hit.distanceToSquared(center)<=radius*radius?{t,point:hit}:null;
+}
+function segmentBox(a,b,mesh){
+ tempBox.setFromObject(mesh);
+ // Avoid missing collisions when bullets travel farther than thin geometry in one frame.
+ const rayDirection=b.clone().sub(a),length=rayDirection.length();
+ if(length===0)return null;
+ const ray=new THREE.Ray(a,rayDirection.multiplyScalar(1/length));
+ const point=ray.intersectBox(tempBox,new THREE.Vector3());
+ if(!point)return null;
+ const distance=point.distanceTo(a);
+ return distance<=length?{t:distance/length,point}:null;
+}
+function updateProjectiles(dt){
+ for(let i=bullets.length-1;i>=0;i--){
+  const b=bullets[i],spec=PROJECTILES[b.type];
+  b.age+=dt;b.life-=dt;
+  if(b.stuck){
+   if(b.attached&&b.localOffset)b.mesh.position.copy(b.attached.localToWorld(b.localOffset.clone()));
+   b.fuse-=dt;
+   if(b.fuse<=0){const at=b.mesh.position.clone();removeBullet(i);explosion(at,spec.blastRadius,spec.damage,b.owner)}
+   continue;
+  }
+  const old=b.mesh.position.clone();
+  const next=old.clone().addScaledVector(b.velocity,dt);
+  let best=null,attached=null;
+  const test=(hit,obj)=>{if(hit&&(!best||hit.t<best.t)){best=hit;attached=obj}};
+  // A short grace period prevents the projectile hitting its own plane at the muzzle.
+  if(!playerCrash.active&&(b.owner!=='player'||b.age>.18))test(segmentSphere(old,next,player.position,2.7),player);
+  for(const e of enemies){
+   if(e.crashing||(b.owner===e && b.age<=.18))continue;
+   test(segmentSphere(old,next,e.mesh.position,3.4),e.mesh);
+  }
+  if(b.type==='sticky'){
+   for(const mesh of solidSurfaces)test(segmentBox(old,next,mesh),mesh);
+  }
+  if(best){
+   b.mesh.position.copy(best.point);
+   if(b.type==='sticky'){
+    b.stuck=true;b.velocity.set(0,0,0);b.attached=attached;
+    if(attached)b.localOffset=attached.worldToLocal(best.point.clone());
+   }else{
+    if(attached===player){if(playerInvulnerable<=0)hp-=spec.damage}
+    else {const e=enemies.find(e=>e.mesh===attached);
+     if(e){e.hp-=1;if(e.hp<=0&&!e.crashing)destroyBot(e)}}
+    removeBullet(i);
+   }
+  }else if(b.life<=0){
+   // Unattached sticky bombs detonate when their flight lifetime expires.
+   if(b.type==='sticky'){removeBullet(i);explosion(next,spec.blastRadius,spec.damage,b.owner)}
+   else removeBullet(i);
+  }else b.mesh.position.copy(next);
+ }
+ for(let i=explosions.length-1;i>=0;i--){
+  const ex=explosions[i];ex.age+=dt;
+  if(ex.particles){
+   for(let j=ex.particles.length-1;j>=0;j--){
+    const p=ex.particles[j];p.age+=dt;
+    p.mesh.position.addScaledVector(p.direction,p.speed*dt);
+    if(!p.fire)p.mesh.position.y+=dt*3.5;
+    p.mesh.scale.setScalar(p.size*(1+p.age*(p.fire?2:2.8)));
+    p.mesh.material.opacity=(p.fire?.88:.58)*Math.pow(Math.max(0,1-p.age/p.life),p.fire?1.4:1.1);
+    if(p.age>=p.life){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();ex.particles.splice(j,1)}
+   }
+   if(!ex.particles.length)explosions.splice(i,1);
+  }else{
+   // Keep the existing glass-panel shatter flash effect.
+   const f=Math.min(1,ex.age/.36);ex.mesh.scale.setScalar(.5+ex.radius*f);
+   ex.mesh.material.opacity=.55*(1-f);
+   if(f>=1){scene.remove(ex.mesh);ex.mesh.geometry.dispose();ex.mesh.material.dispose();explosions.splice(i,1)}
+  }
+ }
+}
+const X_AXIS=new THREE.Vector3(1,0,0),Y_AXIS=new THREE.Vector3(0,1,0),Z_AXIS=new THREE.Vector3(0,0,1);
+function update(dt,t){
+ const previousHp=hp;
+ const previousEnemyHp=enemies.map(e=>e.hp);
+ updateWaterVisuals(t);tickSmoke(dt);playerInvulnerable=Math.max(0,playerInvulnerable-dt);if(keys.KeyW)targetSpeed=Math.min(MAX_SPEED,targetSpeed+40*dt);
+if(keys.KeyS)targetSpeed=Math.max(MIN_SPEED,targetSpeed-40*dt);
+const acceleration=19, deceleration=36;
+if(speed<targetSpeed)speed=Math.min(targetSpeed,speed+acceleration*dt);
+else if(speed>targetSpeed)speed=Math.max(targetSpeed,speed-deceleration*dt);
+const smoothing=Math.min(1,dt*8);
+stick.smoothedX+=(stick.x-stick.smoothedX)*smoothing;
+stick.smoothedY+=(stick.y-stick.smoothedY)*smoothing;
+const turn=(Number(!!keys.ArrowLeft)-Number(!!keys.ArrowRight))*1.25-stick.smoothedX*.85;
+const pitch=(Number(!!keys.ArrowDown)-Number(!!keys.ArrowUp))*.9+stick.smoothedY*.65;// Apply each control directly to the aircraft quaternion in local space.
+// Do not read/write Euler z: it becomes ambiguous at steep pitch and reverses bank.
+rollStick.smoothedX+=(rollStick.x-rollStick.smoothedX)*smoothing;
+const roll=((Number(!!keys.KeyA)-Number(!!keys.KeyD))-rollStick.smoothedX)*1.8;
+let forward=new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);
+if(!playerCrash.active){player.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Y_AXIS,turn*dt));
+player.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(X_AXIS,pitch*dt));
+player.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z_AXIS,roll*dt));
+player.quaternion.normalize();player.userData.prop.rotation.z+=dt*35;const previousPosition=player.position.clone();forward.set(0,0,-1).applyQuaternion(player.quaternion);player.position.addScaledVector(forward,speed*dt);updateAmmoPanel(dt,previousPosition);updateTwinPanel(dt,previousPosition);updateStickyPanel(dt,previousPosition);}else tickPlayerCrash(dt);if(!playerCrash.active){
+ const submerged=planeSubmergedFraction(player);
+ if(submerged>=.51)hp-=40*dt;
+ // Normal land impact is still dangerous; over the river, descend into the water instead.
+ if(player.position.y<2&&Math.abs(player.position.x)>WATER_HALF_WIDTH){hp-=40*dt;player.position.y=2}
+ // The riverbed is solid; do not allow the plane to pass through it.
+ if(player.position.y<WATER_LEVEL-WATER_DEPTH+1&&Math.abs(player.position.x)<=WATER_HALF_WIDTH){hp-=60*dt;player.position.y=WATER_LEVEL-WATER_DEPTH+1}
+ }if(Math.abs(player.position.x)>550||Math.abs(player.position.z)>550)player.position.multiplyScalar(1-.08*dt);shot-=dt;if(!playerCrash.active&&(keys.Space||fireHeld||autoFire)&&shot<=0){
+ if(playerAmmo==='double'){
+  // Two wing-mounted guns fire simultaneously, same ordinary bullet behavior.
+  for(const x of [-2.2,2.2])spawnBullet(player.localToWorld(new THREE.Vector3(x,0,-2.5)),forward.clone(),'regular','player');
+ }else spawnBullet(player.localToWorld(new THREE.Vector3(0,0,-3.4)),forward.clone(),playerAmmo,'player');
+ // ~20 rounds/second per gun, a Spitfire-like rapid machine-gun cadence.
+ shot=playerAmmo==='sticky'?1/4.5:.05;
+}
+for(const e of enemies){if(e.crashing){tickBotCrash(e,dt);continue;}const p=e.mesh;e.phase+=dt*.5;p.rotation.y+=dt*(.24+Math.sin(e.phase)*.2);p.rotation.x=Math.sin(e.phase*.8)*.15;p.userData.prop.rotation.z+=dt*25;const f=new THREE.Vector3(0,0,-1).applyQuaternion(p.quaternion);p.position.addScaledVector(f,dt*22);p.position.y+=Math.sin(e.phase)*dt*3;if(p.position.y<12)p.position.y=12;if(p.position.distanceTo(player.position)>290){p.position.copy(player.position).add(new THREE.Vector3((Math.random()-.5)*180,20,(Math.random()-.5)*180))}e.cooldown-=dt;if(e.cooldown<0&&p.position.distanceTo(player.position)<110){const toPlayer=player.position.clone().sub(p.position).normalize();
+if(f.dot(toPlayer)>.94){
+ spawnBullet(p.localToWorld(new THREE.Vector3(0,0,-3.4)),f.clone(),botAmmo,e);
+ e.cooldown=1.7+Math.random()*2;
+}else e.cooldown=.15}}
+updateProjectiles(dt);
+ if(hp<previousHp)recordDamage(player,t);
+ if(!playerCrash.active)hp=healAircraft(player,hp,dt,t);
+ enemies.forEach((e,i)=>{
+  if(e.hp<previousEnemyHp[i])recordDamage(e.mesh,t);
+  if(!e.crashing)e.hp=healAircraft(e.mesh,e.hp,dt,t);
+ });
+refreshEnemyRadar();
+renderMinimap(dt);
+if(hp<=0&&!playerCrash.active)destroyPlayer();
+// Fixed chase camera: position and orientation stay locked to the aircraft, like a cockpit-aligned third-person view.
+const cameraOffset=new THREE.Vector3(0,2.8,13).applyQuaternion(player.quaternion);
+camera.position.copy(player.position).add(cameraOffset);
+camera.quaternion.copy(player.quaternion);
+// Artificial horizon: world-up is projected into camera space. SVG uses downward-positive Y.
+// Its roll sign must match the actual ground slope; pitch shifts the horizon up/down.
+const worldUpInCamera=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion.clone().invert());
+const horizonAngle=Math.atan2(worldUpInCamera.x,worldUpInCamera.y)*180/Math.PI;
+const forwardY=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).y;
+const pitchOffset=Math.max(-75,Math.min(75,Math.asin(THREE.MathUtils.clamp(forwardY,-1,1))*70));
+document.getElementById('horizon-rotator').setAttribute('transform',`rotate(${horizonAngle} 90 90)`);
+document.getElementById('horizon-pitch').setAttribute('transform',`translate(0 ${pitchOffset})`);
+updateDamageHud(hp,clock.elapsedTime);renderAltitudeTape(player.position.y);document.getElementById('stats').textContent=`HP ${Math.max(0,Math.round(hp))}  |  Speed ${Math.round(speed)}  |  Kills ${kills}  |  Alt ${Math.round((player.position.y-ALTITUDE_ZERO_Y)*FEET_PER_WORLD_UNIT)} ft  |  Ammo: ${playerAmmo==='sticky'?'Sticky Bomb':playerAmmo==='double'?'Double Gun':'Normal Bullets'}`}
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);update(dt,clock.elapsedTime);renderer.render(scene,camera)}loop();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 </script></body></html>
